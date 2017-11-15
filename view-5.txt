@@ -1,0 +1,75 @@
+### 绘制顺序：
+
+
+# drawBackground()：背景（不能重写）。用自带的 API 去设置（xml 布局文件的 android:background 属性以及 Java 代码的 View.setBackgroundXxx() 方法
+
+
+   ↓
+   ↓
+
+
+# onDraw()：绘制主体
+	1. 直接继承 View 的控件，重写 onDraw（）的 super.onDraw() 是空实现
+
+	2. 继承具有某种功能的控件，重写 onDraw（）
+		* 写在 super.onDraw() 的下面：自定义绘制的内容会覆盖原内容。
+			原因：因为自定义的绘制代码会在原有内容绘制完成后执行
+			场景：为控件增加自定义的点缀性内容...
+
+		* 写在 super.onDraw() 的上面：绘制的内容被原内容覆盖
+			原因：同上原因的相反
+			场景：在文字下层绘制自定义的颜色作为强调色...
+
+   ↓
+   ↓
+
+
+# dispatchDraw()：绘制子 View
+	* 写在 super.dispatchDraw() 的下面：让自定义绘制的内容覆盖子 view
+
+	* 写在 super.dispatchDraw() 的上面： onDraw() 之后、super.dispatchDraw() 之前发生，和重写 onDraw() 并把绘制代码写在 super.onDraw() 之后的做法，效果是一样的
+
+	* 注：虽然 View 和 ViewGroup 都有 dispatchDraw() 方法，不过由于 View 是没有子 View 的，所以一般来说 dispatchDraw() 这个方法只对 ViewGroup（以及它的子类）有意义
+
+
+   ↓
+   ↓
+ 
+
+# onDrawForeground()：绘制。前景的支持是在 Android 6.0 (API23)。6.0 之前只支持 FrameLayout
+		- 滑动边缘渐变
+			↓
+		- 滑动条：可以通过 xml 的 android:scrollbarXXX 系列属性或 Java 代码的  View.setXXXScrollbarXXX() 系列方法来设置
+			↓
+		- 前景（：可以通过 xml 的 android:foreground 属性或 Java 代码的  View.setForeground() 方法来设置
+
+	* 写在 super.onDrawForeground() 的下面：自定义绘制的内容会覆盖滑动边缘渐变、滑动条和前景
+
+	* super.onDrawForeground() 的上面：绘制内容会盖住子 View，但被滑动边缘渐变、滑动条以及前景盖住
+
+	* 注意：不能在滑动边缘渐变、滑动条和前景之间插入绘制代码
+
+
+# draw()：总调度方法，一个 View 的整个绘制过程都发生在 draw() 方法里。背景、主体、子 View 、滑动相关以及前景的绘制，都在 draw() 方法里完成
+	* 部分源码：
+		public void draw(Canvas canvas) {  
+		    ...
+
+		    drawBackground(Canvas); // 绘制背景（不能重写）
+		    onDraw(Canvas); // 绘制主体
+		    dispatchDraw(Canvas); // 绘制子 View
+		    onDrawForeground(Canvas); // 绘制滑动相关和前景
+
+		    ...
+		}
+	* 写在 super.draw() 的下面：和绘制代码写在 super.onDrawForeground() 下面时的效果是一样
+
+	* 写在 super.draw() 的上面：在绘制背景前执行，会被之后所有的绘制覆盖
+		场景：给 EditText 加上背景色，但是不想遮挡下划线。
+
+# 注意：
+	1. 出于效率的考虑，ViewGroup 默认会绕过 draw() 方法，换而直接执行 dispatchDraw()，以此来简化绘制流程。
+	   如果自定义了某个 ViewGroup 的子类（比如 LinearLayout）并且需要在它的除 dispatchDraw() 以外的任何一个绘制方法内绘制内容，你可能会需要调用 View.setWillNotDraw(false)。（有些 ViewGroup 是已经调用过 setWillNotDraw(false) 了的，例如 ScrollView）
+
+	2. 在重写的方法有多个选择时，优先选择 onDraw()：如果绘制代码既可以写在 onDraw() 里，也可以写在其他绘制方法里，那么优先写在 onDraw()。因为 Android 有相关的优化，可以在不需要重绘的时候自动跳过 onDraw() 的重复执行，以提升开发效率。享受这种优化的只有 onDraw() 一个方法
+
